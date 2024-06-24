@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stafstaal Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      button {
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      input[readonly] {
+        background-color: #e9ecef;
+      }
+      #result {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Stafstaal Converter</h1>
+      <div class="form-group">
+        <label for="shapeSelect">Kies de vorm:</label>
+        <select id="shapeSelect">
+          <option value="round">Rond</option>
+          <option value="square">Vierkant</option>
+          <option value="rectangular">Rechthoekig</option>
+          <option value="hexagon">Zeskant</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="materialSelect">Kies het materiaal:</label>
+        <select id="materialSelect">
+          <option value="C35">C35</option>
+          <option value="C45">C45</option>
+          <option value="S235">S235</option>
+          <option value="S275">S275</option>
+          <option value="S355">S355</option>
+          <option value="P235">P235</option>
+          <option value="E235">E235</option>
+          <option value="18CrNiMo7-6">18CrNiMo7-6</option>
+          <option value="16MnCr5">16MnCr5</option>
+          <!-- Add more materials as needed -->
+        </select>
+      </div>
+      <div id="dimensions">
+        <!-- Dynamic dimension inputs will be inserted here -->
+      </div>
+      <div class="form-group">
+        <label for="weightKg">Gewicht (kg):</label>
+        <input
+          type="number"
+          id="weightKg"
+          placeholder="Voer gewicht in kilogram in"
+        />
+      </div>
+      <div class="form-group" id="weightPerMeterContainer">
+        <label for="weightPerMeter">Gewicht per meter (kg/m):</label>
+        <input type="text" id="weightPerMeter" readonly />
+      </div>
+      <button id="convertButton">Converteer naar meters</button>
+      <div id="result" class="form-group"></div>
+    </div>
+
+    <script>
+      const densityMap = {
+        C35: 7850,
+        C45: 7800,
+        S235: 7850,
+        S275: 7850,
+        S355: 7850,
+        P235: 7880,
+        E235: 7880,
+        "18CrNiMo7-6": 7800,
+        "16MnCr5": 7800,
+        // Add more materials and their densities as needed
+      };
+
+      const shapeSelect = document.getElementById("shapeSelect");
+      const materialSelect = document.getElementById("materialSelect");
+      const dimensionsDiv = document.getElementById("dimensions");
+      const resultDiv = document.getElementById("result");
+      const weightKgInput = document.getElementById("weightKg");
+
+      shapeSelect.addEventListener("change", function () {
+        updateDimensionInputs(this.value);
+      });
+
+      materialSelect.addEventListener("change", function () {
+        updateWeightPerMeter();
+      });
+
+      weightKgInput.addEventListener("keypress", function (event) {
+        if (event.key === "Enter") {
+          calculateTotalMeters();
+        }
+      });
+
+      function updateDimensionInputs(shape) {
+        let dimensionsHtml = "";
+        switch (shape) {
+          case "round":
+            dimensionsHtml = `
+                        <div class="form-group">
+                            <label for="diameter1">Diameter 1 (mm):</label>
+                            <input type="number" id="diameter1" placeholder="Voer diameter 1 in mm in">
+                        </div>
+                    `;
+            break;
+          case "square":
+            dimensionsHtml = `
+                        <div class="form-group">
+                            <label for="diameter1">Diameter 1 (mm):</label>
+                            <input type="number" id="diameter1" placeholder="Voer diameter 1 in mm in">
+                        </div>
+                    `;
+            break;
+          case "rectangular":
+            dimensionsHtml = `
+                        <div class="form-group">
+                            <label for="diameter1">Diameter 1 (mm):</label>
+                            <input type="number" id="diameter1" placeholder="Voer diameter 1 in mm in">
+                        </div>
+                        <div class="form-group">
+                            <label for="diameter2">Diameter 2 (mm):</label>
+                            <input type="number" id="diameter2" placeholder="Voer diameter 2 in mm in">
+                        </div>
+                    `;
+            break;
+          case "hexagon":
+            dimensionsHtml = `
+                        <div class="form-group">
+                            <label for="diameter1">Diameter 1 (mm):</label>
+                            <input type="number" id="diameter1" placeholder="Voer diameter 1 in mm in">
+                        </div>
+                    `;
+            break;
+        }
+        dimensionsDiv.innerHTML = dimensionsHtml;
+
+        // Attach event listeners to the new input fields
+        document
+          .getElementById("diameter1")
+          ?.addEventListener("input", updateWeightPerMeter);
+        document
+          .getElementById("diameter2")
+          ?.addEventListener("input", updateWeightPerMeter);
+      }
+
+      function updateWeightPerMeter() {
+        const material = materialSelect.value;
+        const density = densityMap[material];
+        const shape = shapeSelect.value;
+        const diameter1 = parseFloat(
+          document.getElementById("diameter1")?.value
+        );
+        const diameter2 = parseFloat(
+          document.getElementById("diameter2")?.value
+        );
+        let weightPerMeter = 0;
+
+        if (!density || isNaN(diameter1)) {
+          return;
+        }
+
+        switch (shape) {
+          case "round":
+            weightPerMeter = calculateWeightPerMeterForRoundBars(
+              diameter1,
+              density
+            );
+            break;
+          case "square":
+            weightPerMeter = calculateWeightPerMeterForRectangularBars(
+              diameter1,
+              diameter1,
+              density
+            );
+            break;
+          case "rectangular":
+            if (!isNaN(diameter2)) {
+              weightPerMeter = calculateWeightPerMeterForRectangularBars(
+                diameter1,
+                diameter2,
+                density
+              );
+            }
+            break;
+          case "hexagon":
+            weightPerMeter = calculateWeightPerMeterForRoundBars(
+              diameter1,
+              density
+            );
+            break;
+        }
+
+        const weightPerMeterInput = document.getElementById("weightPerMeter");
+        weightPerMeterInput.value = weightPerMeter.toFixed(2);
+      }
+
+      document
+        .getElementById("convertButton")
+        .addEventListener("click", calculateTotalMeters);
+
+      function calculateTotalMeters() {
+        const weightKg = parseFloat(weightKgInput.value);
+        const weightPerMeter = parseFloat(
+          document.getElementById("weightPerMeter").value
+        );
+
+        if (isNaN(weightKg) || isNaN(weightPerMeter)) {
+          resultDiv.textContent =
+            "Vul alstublieft alle velden in met geldige getallen.";
+          return;
+        }
+
+        const meters = weightKg / weightPerMeter;
+        resultDiv.textContent = `Totale lengte: ${meters.toFixed(2)} meter`;
+      }
+
+      function calculateWeightPerMeterForRoundBars(diameter, density) {
+        const diameterMeters = diameter / 1000; // Convert diameter from mm to meters to get radius
+        const crossSectionalArea = Math.PI * Math.pow(diameterMeters / 2, 2); // πr² in m²
+        const weightPerMeter = crossSectionalArea * density; // Calculate weight in kg/m
+        return weightPerMeter;
+      }
+
+      function calculateWeightPerMeterForRectangularBars(
+        width,
+        height,
+        density
+      ) {
+        const widthMeters = width / 1000; // Convert width from mm to meters
+        const heightMeters = height / 1000; // Convert height from mm to meters if provided, otherwise treat as square bar
+        const crossSectionalArea = widthMeters * heightMeters; // width * height in m²
+        const weightPerMeter = crossSectionalArea * density; // Calculate weight in kg/m
+        return weightPerMeter;
+      }
+
+      // Initialize the dimension inputs based on the default shape
+      updateDimensionInputs(shapeSelect.value);
+    </script>
+  </body>
+</html>
